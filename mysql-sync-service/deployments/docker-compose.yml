@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  state-db:
+    image: mysql:8.0
+    container_name: sync-state-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: sync_state
+      MYSQL_USER: state_user
+      MYSQL_PASSWORD: state_password
+    volumes:
+      - state-db-data:/var/lib/mysql
+      - ../migrations/mysql:/docker-entrypoint-initdb.d
+    ports:
+      - "3307:3306"
+    networks:
+      - sync-network
+
+  core-sync:
+    build:
+      context: ../services/core-sync
+      dockerfile: Dockerfile
+    container_name: core-sync-service
+    depends_on:
+      - state-db
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      - ../config.yaml:/root/config.yaml
+    ports:
+      - "8080:8080"
+    networks:
+      - sync-network
+    restart: unless-stopped
+
+  web-ui:
+    build:
+      context: ../services/web-ui
+      dockerfile: Dockerfile
+    container_name: sync-web-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - core-sync
+    networks:
+      - sync-network
+    restart: unless-stopped
+
+networks:
+  sync-network:
+    driver: bridge
+
+volumes:
+  state-db-data:

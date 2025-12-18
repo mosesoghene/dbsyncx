@@ -1,0 +1,66 @@
+databases:
+  local:
+    host: localhost
+    port: 3306
+    user: sync_user
+    password: password
+    database: myapp_local
+    replication_user: repl_user
+    replication_password: repl_password
+  
+  cloud:
+    host: db.example.com
+    port: 3306
+    user: sync_user
+    password: password
+    database: myapp_cloud
+    replication_user: repl_user
+    replication_password: repl_password
+
+state_storage:
+  type: mysql  # or sqlite
+  host: state-db
+  port: 3306
+  user: state_user
+  password: state_password
+  database: sync_state
+  # For SQLite:
+  # file_path: ./data/sync_state.db
+
+sync:
+  mode: bidirectional  # local_to_cloud | cloud_to_local | bidirectional
+  
+  tables:
+    - name: users
+      conflict_resolution: last_write_wins
+      batch_size: 5000
+      primary_key: id
+      timestamp_column: updated_at
+      
+    - name: orders
+      conflict_resolution: manual
+      batch_size: 10000
+      primary_key: order_id
+      timestamp_column: modified_at
+  
+  workers: 8
+  realtime: true
+  batch_insert_size: 1000
+  
+scheduler:
+  enabled: true
+  interval: "*/10 * * * *"  # Every 10 minutes
+
+server:
+  port: 8080
+  host: 0.0.0.0
+  auth_token: "your-secret-token"
+  read_timeout: 30s
+  write_timeout: 30s
+  cors_origins:
+    - "http://localhost:3000"
+    - "https://sync-ui.example.com"
+
+logging:
+  level: info
+  format: json
